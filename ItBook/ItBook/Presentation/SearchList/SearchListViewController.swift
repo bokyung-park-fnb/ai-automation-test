@@ -159,12 +159,28 @@ final class SearchListViewController: UIViewController {
                 self?.showError(message)
             }
             .store(in: &cancellables)
+
+        viewModel.$favoriteChangedBookId
+            .compactMap { $0 }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] bookId in
+                self?.reconfigureItem(bookId: bookId)
+            }
+            .store(in: &cancellables)
     }
 
     private func updateSnapshot(with books: [Book]) {
         var snapshot = NSDiffableDataSourceSnapshot<CollectionSection, Book>()
         snapshot.appendSections([CollectionSection.main])
         snapshot.appendItems(books)
+        dataSource.apply(snapshot, animatingDifferences: true)
+    }
+
+    private func reconfigureItem(bookId: String) {
+        guard let book = viewModel.books.first(where: { $0.id == bookId }) else { return }
+
+        var snapshot = dataSource.snapshot()
+        snapshot.reconfigureItems([book])
         dataSource.apply(snapshot, animatingDifferences: true)
     }
 

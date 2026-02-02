@@ -10,6 +10,7 @@ final class SearchListViewModel: ObservableObject {
     @Published private(set) var isLoadingMore = false
     @Published private(set) var errorMessage: String?
     @Published var searchQuery = ""
+    @Published private(set) var favoriteChangedBookId: String?
 
     // MARK: - Properties
 
@@ -124,7 +125,9 @@ final class SearchListViewModel: ObservableObject {
         )
 
         favoritesUseCase.toggleFavorite(favoriteBook)
-            .sink { _ in } receiveValue: { _ in }
+            .sink { _ in } receiveValue: { [weak self] _ in
+                self?.favoriteChangedBookId = book.id
+            }
             .store(in: &cancellables)
     }
 
