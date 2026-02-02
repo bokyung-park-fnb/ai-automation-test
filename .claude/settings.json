@@ -1,8 +1,115 @@
 {
-  "version": "1.0",
-  "hooks": {
-    "SessionStart": {},
-    "PreToolUse": {},
-    "PostToolUse": {}
-  }
+    "version": "1.0",
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": {
+                    "tool": "Bash",
+                    "pattern": "git push"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "echo '🔍 Reviewing changes before push...' && git diff --stat HEAD~1"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Bash",
+                    "pattern": "git commit"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if git diff --cached | grep -E '(AKIA|sk-|ghp_|api_key|API_KEY|secret|SECRET)'; then echo '❌ Potential secrets detected!' && exit 1; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Write",
+                    "pattern": "\\.(mobileprovision|p12|cer)$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "echo '❌ Certificate files should not be committed' && exit 1"
+                    }
+                ]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": {
+                    "tool": "Edit",
+                    "pattern": "\\.swift$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if command -v swiftformat &> /dev/null; then swiftformat \"$CLAUDE_FILE_PATH\" --quiet; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Write",
+                    "pattern": "\\.swift$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if command -v swiftformat &> /dev/null; then swiftformat \"$CLAUDE_FILE_PATH\" --quiet; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Edit",
+                    "pattern": "\\.swift$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if grep -n 'print(' \"$CLAUDE_FILE_PATH\" 2>/dev/null; then echo '⚠️  Warning: print() detected. Consider using os.Logger instead.'; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Edit",
+                    "pattern": "\\.swift$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "if grep -n '\\[self\\]' \"$CLAUDE_FILE_PATH\" 2>/dev/null | grep -v 'weak self'; then echo '⚠️  Warning: Potential retain cycle. Consider using [weak self].'; fi"
+                    }
+                ]
+            },
+            {
+                "matcher": {
+                    "tool": "Edit",
+                    "pattern": "\\.(pbxproj|plist|strings|entitlements)$"
+                },
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "plutil -lint \"$CLAUDE_FILE_PATH\" 2>/dev/null || echo '⚠️  Xcode file syntax check failed'"
+                    }
+                ]
+            }
+        ],
+        "Stop": [
+            {
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "echo '🔍 Final audit...' && git diff --name-only --cached 2>/dev/null | grep '\\.swift$' | xargs -I {} sh -c 'grep -l \"print(\" \"{}\" 2>/dev/null && echo \"⚠️  print() found in {}\"' || true"
+                    }
+                ]
+            }
+        ]
+    }
 }
